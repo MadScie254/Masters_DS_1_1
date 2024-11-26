@@ -3,27 +3,39 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 
-# Load Models
-mlp_model = load_model("mlp_gdp_model.keras")
-rnn_model = load_model("rnn_gdp_model.keras")
+# Load the saved models
+mlp_model = load_model('mlp_model.h5')
+rnn_model = load_model('rnn_model.h5')
 
-# Input for testing
-st.title("GDP Prediction with Neural Networks")
-st.write("Input 3x3 GDP-related data for predictions:")
+# Streamlit app
+st.title("GDP Prediction App")
 
-input_data = []
-for i in range(3):
-    row = st.text_input(f"Row {i+1} (comma-separated):", "0.0, 0.0, 0.0")
-    input_data.append(list(map(float, row.split(','))))
+# Input for new data
+st.write("Enter GDP-related data:")
+year = st.number_input("Year", min_value=2000, max_value=2100, value=2023)
+nominal_gdp = st.number_input("Nominal GDP prices (Ksh Million)", min_value=0.0, value=0.0)
+annual_growth = st.number_input("Annual GDP growth (%)", value=0.0)
+real_gdp = st.number_input("Real GDP prices (Ksh Million)", min_value=0.0, value=0.0)
 
+# Button to preprocess and make predictions
 if st.button("Predict"):
-    # Reshape and preprocess the input
-    input_array = np.array(input_data).reshape(1, 3, 3)
+    try:
+        # Preprocess inputs
+        input_data = np.array([[nominal_gdp, annual_growth, real_gdp]])
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        scaled_input = scaler.fit_transform(input_data)
 
-    # Predictions
-    mlp_prediction = mlp_model.predict(input_array)[0][0]
-    rnn_prediction = rnn_model.predict(input_array)[0][0]
+        # Prepare sequence (mock sequence for demonstration)
+        sequence = np.array([scaled_input, scaled_input, scaled_input])
+        sequence = sequence.reshape(1, 3, 3)
 
-    # Display Results
-    st.write(f"MLP Prediction: {mlp_prediction}")
-    st.write(f"RNN Prediction: {rnn_prediction}")
+        # MLP prediction
+        mlp_prediction = mlp_model.predict(sequence)
+        st.write(f"MLP Prediction (Nominal GDP): {mlp_prediction[0][0]}")
+
+        # RNN prediction
+        rnn_prediction = rnn_model.predict(sequence)
+        st.write(f"RNN Prediction (Nominal GDP): {rnn_prediction[0][0]}")
+
+    except Exception as e:
+        st.error(f"Error: {e}")

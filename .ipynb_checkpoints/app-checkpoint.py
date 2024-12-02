@@ -1,42 +1,44 @@
 import streamlit as st
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
 
-# Load saved models in the Keras format
-mlp_model = load_model('/mnt/data/mlp_gdp_model.keras')
-rnn_model = load_model('/mnt/data/rnn_gdp_model.keras')
+# Load the trained model
+model = load_model('gdp_prediction_model.keras')
 
+# Streamlit app
+def main():
+    st.title("GDP Prediction Model")
+    st.write("This app predicts the upcoming GDP based on prior GDP data.")
 
-# Scaler for consistent input transformation
-scaler = MinMaxScaler(feature_range=(0, 1))
-
-st.title("GDP Prediction App")
-st.write("Predict future GDP values using either MLP or RNN models based on previous years' data.")
-
-# User input for previous 3 years' data
-st.write("Enter data for the last 3 years to predict the next year's Nominal GDP price.")
-input_data = []
-for i in range(3):
-    year_data = st.number_input(f"Year {i+1} Nominal GDP prices (Ksh Million)", min_value=0.0)
-    growth_rate = st.number_input(f"Year {i+1} Annual GDP growth (%)")
-    real_gdp = st.number_input(f"Year {i+1} Real GDP prices (Ksh Million)", min_value=0.0)
-    input_data.append([year_data, growth_rate, real_gdp])
-
-# Convert and scale input data
-input_data = np.array(input_data).reshape(1, 3, 3)
-input_data_scaled = scaler.fit_transform(input_data.reshape(-1, 3)).reshape(1, 3, 3)
-
-# Model Selection
-model_choice = st.selectbox("Select Model", ["MLP", "RNN"])
-
-if st.button("Predict"):
-    if model_choice == "MLP":
-        # Flatten input for MLP model
-        input_data_flattened = input_data_scaled.reshape(1, -1)
-        prediction = mlp_model.predict(input_data_flattened)
-    else:
-        prediction = rnn_model.predict(input_data_scaled)
+    # User input for prior GDP data
+    st.subheader("Input Prior GDP Data")
     
-    # Display prediction result
-    st.write(f"Predicted Nominal GDP price for the next year: {prediction[0][0]:.2f} Ksh Million")
+    # Define fields for prior GDP data (example: 10 data points)
+    prior_gdp_data = []
+    for i in range(1, 11):
+        gdp_input = st.number_input(f"GDP Data Point {i}", min_value=0.0, step=0.1)
+        prior_gdp_data.append(gdp_input)
+
+    # When the user clicks 'Predict'
+    if st.button("Predict"):
+        # Check if all input data is entered
+        if len(prior_gdp_data) == 10:
+            # Preprocess the input data
+            input_data = np.array(prior_gdp_data).reshape(1, 10, 1)  # Reshaping for the LSTM model
+            scaler = MinMaxScaler(feature_range=(0, 1))  # For scaling the GDP values
+            input_data_scaled = scaler.fit_transform(input_data[0]).reshape(1, 10, 1)
+
+            # Make a prediction using the model
+            prediction = model.predict(input_data_scaled)
+            predicted_gdp = prediction[0][0]  # Extract predicted GDP
+
+            st.subheader(f"Predicted Upcoming GDP: {predicted_gdp:.2f}")
+        else:
+            st.error("Please provide all 10 prior GDP data points.")
+
+# Run the Streamlit app
+if __name__ == "__main__":
+    main()
